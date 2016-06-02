@@ -7,6 +7,11 @@ Bytes:
 >>> eo = EoParser("65 6F 20 6C 61 6E 67")
 >>> eo.parse()
 'eo lang'
+
+Strings:
+>>> eo = EoParser(' "string in eo lang" ')
+>>> eo.parse()
+'string in eo lang'
 """
 
 from StringIO import StringIO
@@ -21,6 +26,19 @@ class Byte(object):
 
 	def __radd__(self, string):
 		return string + chr(int(self.value, 16))
+
+
+class String(object):
+
+	def __init__(self, infile):
+		self.value = str()
+		char = infile.read(1)
+		while char != '"':
+			self.value += char
+			char = infile.read(1)
+
+	def __radd__(self, string):
+		return string + self.value
 
 
 class EoParser(object):
@@ -41,6 +59,9 @@ class EoParser(object):
 			if char in "0123456789ABCDEF":
 				byte = Byte(char, self.infile)
 				result += byte
+			elif char == '"':
+				string = String(self.infile)
+				result += string
 		return result
 
 
