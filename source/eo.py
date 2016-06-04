@@ -28,6 +28,11 @@ Comments:
 >>> eo = EoParser(' "Ângelo" (first name) " " (space) "Nuffer" (last name) ')
 >>> eo.parse()
 '\\xc3\\x82ngelo Nuffer'
+
+Conditional:
+>>> eo = EoParser(' @red { "color" } [ red = "name" ? "red is a name" ] [ red = "color" ? "red is a color" ] ')
+>>> eo.parse()
+'red is a color'
 """
 
 from StringIO import StringIO
@@ -86,9 +91,7 @@ class Function(object):
 		for argument in self.arguments:
 			value = read_value(infile, functions)
 			arguments.append(Function('%s { "%s" }' % (argument, value.value)))
-		parser = EoParser(self.source)
-		parser.functions = arguments
-		return parser.parse()
+		return EoParser(self.source, arguments).parse()
 
 
 class Comment(object):
@@ -102,14 +105,43 @@ class Comment(object):
 		return string
 
 
+class Conditional(object):
+
+	def __init__(self, infile, functions):
+		char = infile.read(1)
+		value1 = str()
+		while char != "=":
+			value1 += char
+			char = infile.read(1)
+		char = infile.read(1)
+		value2 = str()
+		while char != "?":
+			value2 += char
+			char = infile.read(1)
+		source = str()
+		while char != "]":
+			source += char
+			char = infile.read(1)
+		if EoParser(value1, functions).parse() == EoParser(value2, functions).parse():
+			self.value = EoParser(source, functions).parse()
+		else:
+			self.value = str()
+
+	def __radd__(self, string):
+		return string + self.value
+
+
 class EoParser(object):
 
-	def __init__(self, infile):
+	def __init__(self, infile, functions=None):
 		self.infile = file_or_string(infile)
 		self.infile.seek(0, os.SEEK_END)
 		self.length = self.infile.tell()
 		self.infile.seek(0)
-		self.functions = list()
+		if type(functions) is list:
+			self.functions = functions
+		else:
+			self.functions = list()
 
 	def parse(self):
 		result = str()
@@ -146,6 +178,8 @@ def read_value(infile, functions):
 		return String(infile)
 	elif char == "@":
 		return Function(infile)
+	elif char == "[":
+		return Conditional(infile, functions)
 	elif re.match(VAR_TOKEN, char):
 		name = read_name(infile, char)
 		for function in functions:
