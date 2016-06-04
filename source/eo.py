@@ -37,6 +37,7 @@ Conditional:
 
 from StringIO import StringIO
 import argparse
+import sys
 import os
 import re
 
@@ -131,6 +132,20 @@ class Conditional(object):
 		return string + self.value
 
 
+class Library(object):
+
+	def __init__(self, infile, functions):
+		char = infile.read(1)
+		source = str()
+		while char != "!":
+			source += char
+			char = infile.read(1)
+		self.value = EoParser(open(EoParser(source, functions).parse()).read(), functions).parse()
+
+	def __radd__(self, string):
+		return string + self.value
+
+
 class EoParser(object):
 
 	def __init__(self, infile, functions=None):
@@ -180,12 +195,14 @@ def read_value(infile, functions):
 		return Function(infile)
 	elif char == "[":
 		return Conditional(infile, functions)
+	elif char == "#":
+		return Library(infile, functions)
 	elif re.match(VAR_TOKEN, char):
 		name = read_name(infile, char)
 		for function in functions:
 			if name == function.name:
 				return function(infile, functions)
-		raise BaseException(name)
+		raise NameError("name '%s' is not defined" % name)
 	else:
 		return read_value(infile, functions)
 
@@ -193,3 +210,4 @@ if __name__ == "__main__":
 	parser = argparse.ArgumentParser()
 	parser.add_argument("infile", nargs="?", type=argparse.FileType("r"))
 	args = parser.parse_args()
+	sys.stdout.write(EoParser(args.infile).parse())
