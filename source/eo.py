@@ -41,7 +41,7 @@ import sys
 import os
 import re
 
-VAR_TOKEN = r"[a-z0-9_]"
+VAR_TOKEN = r"[a-zĉĝĥĵŝŭ0-9_]"
 
 
 class Byte(object):
