@@ -92,7 +92,7 @@ class Function(object):
 		for argument in self.arguments:
 			value = read_value(infile, functions)
 			arguments.append(Function('%s { "%s" }' % (argument, value.value)))
-		return EoParser(self.source, arguments).parse()
+		return EoParser(self.source, arguments + functions).parse()
 
 
 class Comment(object):
