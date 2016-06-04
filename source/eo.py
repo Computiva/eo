@@ -18,12 +18,19 @@ Functions:
 >>> eo = EoParser(' @last_name { "Nuffer" } "Ângelo " last_name ')
 >>> eo.parse()
 '\\xc3\\x82ngelo Nuffer'
+
+Arguments:
+>>> eo = EoParser(' @tac a b { b " " a } tac "abc" "def" ')
+>>> eo.parse()
+'def abc'
 """
 
 from StringIO import StringIO
 import argparse
 import os
 import re
+
+VAR_TOKEN = r"[a-z_]"
 
 
 class Byte(object):
@@ -51,30 +58,38 @@ class String(object):
 class Function(object):
 
 	def __init__(self, infile):
+		infile = file_or_string(infile)
 		self.name = str()
 		char = infile.read(1)
 		while char not in " {":
 			self.name += char
 			char = infile.read(1)
+		self.arguments = list()
 		while char != "{":
 			char = infile.read(1)
+			if re.match(VAR_TOKEN, char):
+				name = read_name(infile, char)
+				self.arguments.append(name)
 		char = infile.read(1)
-		content = str()
+		self.source = str()
 		while char != "}":
-			content += char
+			self.source += char
 			char = infile.read(1)
-		self.content = EoParser(content).parse()
+
+	def __call__(self, infile, functions):
+		arguments = list()
+		for argument in self.arguments:
+			value = read_value(infile, functions)
+			arguments.append(Function('%s { "%s" }' % (argument, value.value)))
+		parser = EoParser(self.source)
+		parser.functions = arguments
+		return parser.parse()
 
 
 class EoParser(object):
 
-	VAR_TOKEN = r"[a-z_]"
-
 	def __init__(self, infile):
-		if type(infile) == str:
-			self.infile = StringIO(infile)
-		else:
-			self.infile = infile
+		self.infile = file_or_string(infile)
 		self.infile.seek(0, os.SEEK_END)
 		self.length = self.infile.tell()
 		self.infile.seek(0)
@@ -83,26 +98,44 @@ class EoParser(object):
 	def parse(self):
 		result = str()
 		while self.infile.tell() < self.length:
-			char = self.infile.read(1)
-			if char in "0123456789ABCDEF":
-				byte = Byte(char, self.infile)
-				result += byte
-			elif char == '"':
-				string = String(self.infile)
-				result += string
-			elif char == "@":
-				function = Function(self.infile)
-				self.functions.append(function)
-			elif re.match(EoParser.VAR_TOKEN, char):
-				name = str()
-				while re.match(EoParser.VAR_TOKEN, char):
-					name += char
-					char = self.infile.read(1)
-				for function in self.functions:
-					if name == function.name:
-						result += function.content
+			value = read_value(self.infile, self.functions)
+			if type(value) == Function:
+				self.functions.append(value)
+			else:
+				result += value
 		return result
 
+
+def file_or_string(infile):
+	if type(infile) == str:
+		return StringIO(infile)
+	return infile
+
+def read_name(infile, char):
+	name = str()
+	while re.match(VAR_TOKEN, char):
+		name += char
+		char = infile.read(1)
+	return name
+
+def read_value(infile, functions):
+	char = infile.read(1)
+	if char == "":
+		return ""
+	elif char in "0123456789ABCDEF":
+		return Byte(char, infile)
+	elif char == '"':
+		return String(infile)
+	elif char == "@":
+		return Function(infile)
+	elif re.match(VAR_TOKEN, char):
+		name = read_name(infile, char)
+		for function in functions:
+			if name == function.name:
+				return function(infile, functions)
+		raise BaseException(name)
+	else:
+		return read_value(infile, functions)
 
 if __name__ == "__main__":
 	parser = argparse.ArgumentParser()
