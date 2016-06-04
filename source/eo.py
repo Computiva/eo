@@ -23,6 +23,11 @@ Arguments:
 >>> eo = EoParser(' @tac a b { b " " a } tac "abc" "def" ')
 >>> eo.parse()
 'def abc'
+
+Comments:
+>>> eo = EoParser(' "Ângelo" (first name) " " (space) "Nuffer" (last name) ')
+>>> eo.parse()
+'\\xc3\\x82ngelo Nuffer'
 """
 
 from StringIO import StringIO
@@ -86,6 +91,17 @@ class Function(object):
 		return parser.parse()
 
 
+class Comment(object):
+
+	def __init__(self, infile):
+		char = infile.read(1)
+		while char != ")":
+			char = infile.read(1)
+
+	def __radd__(self, string):
+		return string
+
+
 class EoParser(object):
 
 	def __init__(self, infile):
@@ -122,6 +138,8 @@ def read_value(infile, functions):
 	char = infile.read(1)
 	if char == "":
 		return ""
+	elif char == "(":
+		return Comment(infile)
 	elif char in "0123456789ABCDEF":
 		return Byte(char, infile)
 	elif char == '"':
