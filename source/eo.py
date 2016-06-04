@@ -50,20 +50,27 @@ class Byte(object):
 		self.value = char + infile.read(1)
 
 	def __radd__(self, string):
-		return string + chr(int(self.value, 16))
+		return string + repr(self)
+
+	def __repr__(self):
+		return chr(int(self.value, 16))
 
 
 class String(object):
 
 	def __init__(self, infile):
+		infile = file_or_string(infile)
 		self.value = str()
 		char = infile.read(1)
-		while char != '"':
+		while char != '"' and char != "":
 			self.value += char
 			char = infile.read(1)
 
 	def __radd__(self, string):
 		return string + self.value
+
+	def __repr__(self):
+		return '"%s"' % self.value
 
 
 class Function(object):
@@ -91,7 +98,7 @@ class Function(object):
 		arguments = list()
 		for argument in self.arguments:
 			value = read_value(infile, functions)
-			arguments.append(Function('%s { "%s" }' % (argument, value.value)))
+			arguments.append(Function('%s { %s }' % (argument, value)))
 		return EoParser(self.source, arguments + functions).parse()
 
 
@@ -184,7 +191,7 @@ def read_name(infile, char):
 def read_value(infile, functions):
 	char = infile.read(1)
 	if char == "":
-		return ""
+		return String("")
 	elif char == "(":
 		return Comment(infile)
 	elif char in "0123456789ABCDEF":
@@ -201,7 +208,7 @@ def read_value(infile, functions):
 		name = read_name(infile, char)
 		for function in functions:
 			if name == function.name:
-				return function(infile, functions)
+				return String(function(infile, functions))
 		raise NameError("name '%s' is not defined" % name)
 	else:
 		return read_value(infile, functions)
