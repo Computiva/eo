@@ -50,10 +50,10 @@ class Byte(object):
 		self.value = char + infile.read(1)
 
 	def __radd__(self, string):
-		return string + repr(self)
+		return string + chr(int(self.value, 16))
 
 	def __repr__(self):
-		return chr(int(self.value, 16))
+		return self.value
 
 
 class String(object):
@@ -118,9 +118,15 @@ class Conditional(object):
 	def __init__(self, infile, functions):
 		char = infile.read(1)
 		value1 = str()
-		while char != "=":
+		while char not in "!=":
 			value1 += char
 			char = infile.read(1)
+		condition = "="
+		if char == "!":
+			char = infile.read(1)
+			if char != "=":
+				raise SyntaxError("invalid syntax")
+			condition = "!="
 		char = infile.read(1)
 		value2 = str()
 		while char != "?":
@@ -130,10 +136,11 @@ class Conditional(object):
 		while char != "]":
 			source += char
 			char = infile.read(1)
-		if EoParser(value1, functions).parse() == EoParser(value2, functions).parse():
+		self.value = str()
+		if condition == "=" and EoParser(value1, functions).parse() == EoParser(value2, functions).parse():
 			self.value = EoParser(source, functions).parse()
-		else:
-			self.value = str()
+		if condition == "!=" and EoParser(value1, functions).parse() != EoParser(value2, functions).parse():
+			self.value = EoParser(source, functions).parse()
 
 	def __radd__(self, string):
 		return string + self.value
