@@ -177,6 +177,9 @@ class EoParser(object):
 		while self.infile.tell() < self.length:
 			value = read_value(self.infile, self.functions)
 			if type(value) == Function:
+				for function in self.functions:
+					if function.name == value.name:
+						self.functions.remove(function)
 				self.functions.append(value)
 			else:
 				result += value
