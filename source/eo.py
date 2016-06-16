@@ -33,6 +33,10 @@ Conditional:
 >>> eo = EoParser(' @red { "color" } [ red = "name" ? "red is a name" ] [ red = "color" ? "red is a color" ] ')
 >>> eo.parse()
 'red is a color'
+
+>>> eo = EoParser(' @a { 0A } @b { 0B } [ a = 0A ? [ b = 0B ? "a is 0A and b is 0B" ] ] ')
+>>> eo.parse()
+'a is 0A and b is 0B'
 """
 
 from StringIO import StringIO
@@ -132,8 +136,13 @@ class Conditional(object):
 		while char != "?":
 			value2 += char
 			char = infile.read(1)
+		inside = 0
 		source = str()
-		while char != "]":
+		while char != "]" or inside > 0:
+			if char == "[":
+				inside += 1
+			if char == "]":
+				inside -= 1
 			source += char
 			char = infile.read(1)
 		self.value = str()
