@@ -29,7 +29,91 @@ Comments:
 >>> eo.parse()
 '\\xc3\\x82ngelo Nuffer'
 
-Conditional:
+Expressions:
+>>> eo = EoParser(' [ "a" "b" "c" ] ')
+>>> eo.parse()
+'abc'
+
+>>> eo = EoParser(' [ "a" "b" = "ab" ] ')
+>>> ord(eo.parse())
+1
+
+>>> eo = EoParser(' [ 01 + 02 ] ')
+>>> ord(eo.parse())
+3
+
+>>> eo = EoParser(' [ 02 + 03 = 05 ] ')
+>>> ord(eo.parse())
+1
+
+>>> eo = EoParser(' [ 05 - 03 ] ')
+>>> ord(eo.parse())
+2
+
+>>> eo = EoParser(' [ 09 * 03 ] ')
+>>> ord(eo.parse())
+27
+
+>>> eo = EoParser(' [ 06 / 02 ] ')
+>>> ord(eo.parse())
+3
+
+>>> eo = EoParser(' [ 05 % 02 ] ')
+>>> ord(eo.parse())
+1
+
+>>> eo = EoParser(' [ 03 = 03 ] ')
+>>> ord(eo.parse())
+1
+
+>>> eo = EoParser(' [ 03 != 04 ] ')
+>>> ord(eo.parse())
+1
+
+>>> eo = EoParser(' [ 05 > 04 ] ')
+>>> ord(eo.parse())
+1
+
+>>> eo = EoParser(' [ 02 < 04 ] ')
+>>> ord(eo.parse())
+1
+
+>>> eo = EoParser(' [ 05 >= 04 ] ')
+>>> ord(eo.parse())
+1
+
+>>> eo = EoParser(' [ 03 <= 04 ] ')
+>>> ord(eo.parse())
+1
+
+>>> eo = EoParser(' [ "a" && "" ] ')
+>>> eo.parse()
+''
+
+>>> eo = EoParser(' [ "a" || "" ] ')
+>>> ord(eo.parse())
+1
+
+>>> eo = EoParser(' [ 02 & 03 ] ')
+>>> ord(eo.parse())
+2
+
+>>> eo = EoParser(' [ 02 | 03 ] ')
+>>> ord(eo.parse())
+3
+
+>>> eo = EoParser(' [ 02 ^ 03 ] ')
+>>> ord(eo.parse())
+1
+
+>>> eo = EoParser(' [ 02 << 02 ] ')
+>>> ord(eo.parse())
+8
+
+>>> eo = EoParser(' [ 08 >> 02 ] ')
+>>> ord(eo.parse())
+2
+
 >>> eo = EoParser(' @red { "color" } [ red = "name" ? "red is a name" ] [ red = "color" ? "red is a color" ] ')
 >>> eo.parse()
 'red is a color'
@@ -117,42 +201,169 @@ class Comment(object):
 		return string
 
 
-class Conditional(object):
+class Expression(object):
+
+	operators = {
+		"+": "add",
+		"-": "subtract",
+		"*": "multiply",
+		"/": "divide",
+		"%": "modulus",
+		"=": "equals",
+		"!=": "not_equals",
+		">": "greater",
+		"<": "less",
+		">=": "greater_or_equals",
+		"<=": "less_or_equals",
+		"&&": "and_",
+		"||": "or_",
+		"&": "binary_and",
+		"|": "binary_or",
+		"^": "binary_xor",
+		"<<": "binary_left_shift",
+		">>": "binary_right_shift",
+		"?": "if_",
+	}
 
 	def __init__(self, infile, functions):
+		value1 = self.get_value(infile, functions)
+		operator = self.get_operator(infile, functions)
+		while operator:
+			value2 = self.get_value(infile, functions)
+			value1 = getattr(self, Expression.operators[operator])(value1, value2, functions)
+			operator = self.get_operator(infile, functions)
+		self.value = EoParser(value1, functions).parse()
+
+	def __radd__(self, string):
+		return string + self.value
+
+	def get_value(self, infile, functions):
 		char = infile.read(1)
-		value1 = str()
-		while char not in "!=":
-			value1 += char
-			char = infile.read(1)
-		condition = "="
-		if char == "!":
-			char = infile.read(1)
-			if char != "=":
-				raise SyntaxError("invalid syntax")
-			condition = "!="
-		char = infile.read(1)
-		value2 = str()
-		while char != "?":
-			value2 += char
-			char = infile.read(1)
+		value = str()
 		inside = 0
-		source = str()
-		while char != "]" or inside > 0:
+		while char not in map(lambda operator: operator[0], Expression.operators.keys()) + ["]"] or inside > 0:
 			if char == "[":
 				inside += 1
 			if char == "]":
 				inside -= 1
-			source += char
+			value += char
 			char = infile.read(1)
-		self.value = str()
-		if condition == "=" and EoParser(value1, functions).parse() == EoParser(value2, functions).parse():
-			self.value = EoParser(source, functions).parse()
-		if condition == "!=" and EoParser(value1, functions).parse() != EoParser(value2, functions).parse():
-			self.value = EoParser(source, functions).parse()
+		infile.seek(infile.pos - 1)
+		return value
 
-	def __radd__(self, string):
-		return string + self.value
+	def get_operator(self, infile, functions):
+		operator = infile.read(1)
+		if operator == "]":
+			return ""
+		char = infile.read(1)
+		if operator + char in Expression.operators:
+			operator += char
+		return operator
+
+	def add(self, value1, value2, functions):
+		value1 = int(EoParser(value1, functions).parse().encode("hex"), 16)
+		value2 = int(EoParser(value2, functions).parse().encode("hex"), 16)
+		value = hex(value1 + value2)[2:]
+		return value.zfill(len(value) + len(value) % 2 )
+
+	def subtract(self, value1, value2, functions):
+		value1 = int(EoParser(value1, functions).parse().encode("hex"), 16)
+		value2 = int(EoParser(value2, functions).parse().encode("hex"), 16)
+		value = hex(value1 - value2)[2:]
+		return value.zfill(len(value) + len(value) % 2 )
+
+	def multiply(self, value1, value2, functions):
+		value1 = int(EoParser(value1, functions).parse().encode("hex"), 16)
+		value2 = int(EoParser(value2, functions).parse().encode("hex"), 16)
+		value = hex(value1 * value2)[2:]
+		return value.zfill(len(value) + len(value) % 2 )
+
+	def divide(self, value1, value2, functions):
+		value1 = int(EoParser(value1, functions).parse().encode("hex"), 16)
+		value2 = int(EoParser(value2, functions).parse().encode("hex"), 16)
+		value = hex(value1 / value2)[2:]
+		return value.zfill(len(value) + len(value) % 2 )
+
+	def modulus(self, value1, value2, functions):
+		value1 = int(EoParser(value1, functions).parse().encode("hex"), 16)
+		value2 = int(EoParser(value2, functions).parse().encode("hex"), 16)
+		value = hex(value1 % value2)[2:]
+		return value.zfill(len(value) + len(value) % 2 )
+
+	def equals(self, value1, value2, functions):
+		if EoParser(value1, functions).parse() == EoParser(value2, functions).parse():
+			return "01"
+		return ""
+
+	def not_equals(self, value1, value2, functions):
+		if EoParser(value1, functions).parse() != EoParser(value2, functions).parse():
+			return "01"
+		return ""
+
+	def greater(self, value1, value2, functions):
+		if EoParser(value1, functions).parse() > EoParser(value2, functions).parse():
+			return "01"
+		return ""
+
+	def less(self, value1, value2, functions):
+		if EoParser(value1, functions).parse() < EoParser(value2, functions).parse():
+			return "01"
+		return ""
+
+	def greater_or_equals(self, value1, value2, functions):
+		if EoParser(value1, functions).parse() >= EoParser(value2, functions).parse():
+			return "01"
+		return ""
+
+	def less_or_equals(self, value1, value2, functions):
+		if EoParser(value1, functions).parse() <= EoParser(value2, functions).parse():
+			return "01"
+		return ""
+
+	def and_(self, value1, value2, functions):
+		if EoParser(value1, functions).parse() and EoParser(value2, functions).parse():
+			return "01"
+		return ""
+
+	def or_(self, value1, value2, functions):
+		if EoParser(value1, functions).parse() or EoParser(value2, functions).parse():
+			return "01"
+		return ""
+
+	def binary_and(self, value1, value2, functions):
+		value1 = int(EoParser(value1, functions).parse().encode("hex"), 16)
+		value2 = int(EoParser(value2, functions).parse().encode("hex"), 16)
+		value = hex(value1 & value2)[2:]
+		return value.zfill(len(value) + len(value) % 2 )
+
+	def binary_or(self, value1, value2, functions):
+		value1 = int(EoParser(value1, functions).parse().encode("hex"), 16)
+		value2 = int(EoParser(value2, functions).parse().encode("hex"), 16)
+		value = hex(value1 | value2)[2:]
+		return value.zfill(len(value) + len(value) % 2 )
+
+	def binary_xor(self, value1, value2, functions):
+		value1 = int(EoParser(value1, functions).parse().encode("hex"), 16)
+		value2 = int(EoParser(value2, functions).parse().encode("hex"), 16)
+		value = hex(value1 ^ value2)[2:]
+		return value.zfill(len(value) + len(value) % 2 )
+
+	def binary_left_shift(self, value1, value2, functions):
+		value1 = int(EoParser(value1, functions).parse().encode("hex"), 16)
+		value2 = int(EoParser(value2, functions).parse().encode("hex"), 16)
+		value = hex(value1 << value2)[2:]
+		return value.zfill(len(value) + len(value) % 2 )
+
+	def binary_right_shift(self, value1, value2, functions):
+		value1 = int(EoParser(value1, functions).parse().encode("hex"), 16)
+		value2 = int(EoParser(value2, functions).parse().encode("hex"), 16)
+		value = hex(value1 >> value2)[2:]
+		return value.zfill(len(value) + len(value) % 2 )
+
+	def if_(self, value1, value2, functions):
+		if EoParser(value1, functions).parse() == "":
+			return ""
+		return value2
 
 
 class Library(object):
@@ -220,7 +431,7 @@ def read_value(infile, functions):
 	elif char == "@":
 		return Function(infile)
 	elif char == "[":
-		return Conditional(infile, functions)
+		return Expression(infile, functions)
 	elif char == "#":
 		return Library(infile, functions)
 	elif re.match(VAR_TOKEN, char):
