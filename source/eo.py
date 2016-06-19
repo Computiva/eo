@@ -237,6 +237,9 @@ class Expression(object):
 	def __radd__(self, string):
 		return string + self.value
 
+	def __repr__(self):
+		return self.value.encode("hex").upper()
+
 	def get_value(self, infile, functions):
 		char = infile.read(1)
 		value = str()
@@ -248,7 +251,7 @@ class Expression(object):
 				inside -= 1
 			value += char
 			char = infile.read(1)
-		infile.seek(infile.pos - 1)
+		infile.seek(-1, os.SEEK_CUR)
 		return value
 
 	def get_operator(self, infile, functions):
