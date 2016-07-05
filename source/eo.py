@@ -121,6 +121,10 @@ Expressions:
 >>> eo = EoParser(' @a { 0A } @b { 0B } [ a = 0A ? [ b = 0B ? "a is 0A and b is 0B" ] ] ')
 >>> eo.parse()
 'a is 0A and b is 0B'
+
+>>> eo = EoParser(' [ 01 01 01 01 01 01 01 01 01 - 01 = 01 01 01 01 01 01 01 01 00 ? "expression with long int" ] ')
+>>> eo.parse()
+'expression with long int'
 """
 
 from StringIO import StringIO
@@ -266,31 +270,31 @@ class Expression(object):
 	def add(self, value1, value2, functions):
 		value1 = int(EoParser(value1, functions).parse().encode("hex"), 16)
 		value2 = int(EoParser(value2, functions).parse().encode("hex"), 16)
-		value = hex(value1 + value2)[2:].upper()
+		value = "%X" % (value1 + value2)
 		return value.zfill(len(value) + len(value) % 2 )
 
 	def subtract(self, value1, value2, functions):
 		value1 = int(EoParser(value1, functions).parse().encode("hex"), 16)
 		value2 = int(EoParser(value2, functions).parse().encode("hex"), 16)
-		value = hex(value1 - value2)[2:].upper()
+		value = "%X" % (value1 - value2)
 		return value.zfill(len(value) + len(value) % 2 )
 
 	def multiply(self, value1, value2, functions):
 		value1 = int(EoParser(value1, functions).parse().encode("hex"), 16)
 		value2 = int(EoParser(value2, functions).parse().encode("hex"), 16)
-		value = hex(value1 * value2)[2:].upper()
+		value = "%X" % (value1 * value2)
 		return value.zfill(len(value) + len(value) % 2 )
 
 	def divide(self, value1, value2, functions):
 		value1 = int(EoParser(value1, functions).parse().encode("hex"), 16)
 		value2 = int(EoParser(value2, functions).parse().encode("hex"), 16)
-		value = hex(value1 / value2)[2:].upper()
+		value = "%X" % (value1 / value2)
 		return value.zfill(len(value) + len(value) % 2 )
 
 	def modulus(self, value1, value2, functions):
 		value1 = int(EoParser(value1, functions).parse().encode("hex"), 16)
 		value2 = int(EoParser(value2, functions).parse().encode("hex"), 16)
-		value = hex(value1 % value2)[2:].upper()
+		value = "%X" % (value1 % value2)
 		return value.zfill(len(value) + len(value) % 2 )
 
 	def equals(self, value1, value2, functions):
@@ -336,31 +340,31 @@ class Expression(object):
 	def binary_and(self, value1, value2, functions):
 		value1 = int(EoParser(value1, functions).parse().encode("hex"), 16)
 		value2 = int(EoParser(value2, functions).parse().encode("hex"), 16)
-		value = hex(value1 & value2)[2:].upper()
+		value = "%X" % (value1 & value2)
 		return value.zfill(len(value) + len(value) % 2 )
 
 	def binary_or(self, value1, value2, functions):
 		value1 = int(EoParser(value1, functions).parse().encode("hex"), 16)
 		value2 = int(EoParser(value2, functions).parse().encode("hex"), 16)
-		value = hex(value1 | value2)[2:].upper()
+		value = "%X" % (value1 | value2)
 		return value.zfill(len(value) + len(value) % 2 )
 
 	def binary_xor(self, value1, value2, functions):
 		value1 = int(EoParser(value1, functions).parse().encode("hex"), 16)
 		value2 = int(EoParser(value2, functions).parse().encode("hex"), 16)
-		value = hex(value1 ^ value2)[2:].upper()
+		value = "%X" % (value1 ^ value2)
 		return value.zfill(len(value) + len(value) % 2 )
 
 	def binary_left_shift(self, value1, value2, functions):
 		value1 = int(EoParser(value1, functions).parse().encode("hex"), 16)
 		value2 = int(EoParser(value2, functions).parse().encode("hex"), 16)
-		value = hex(value1 << value2)[2:].upper()
+		value = "%X" % (value1 << value2)
 		return value.zfill(len(value) + len(value) % 2 )
 
 	def binary_right_shift(self, value1, value2, functions):
 		value1 = int(EoParser(value1, functions).parse().encode("hex"), 16)
 		value2 = int(EoParser(value2, functions).parse().encode("hex"), 16)
-		value = hex(value1 >> value2)[2:].upper()
+		value = "%X" % (value1 >> value2)
 		return value.zfill(len(value) + len(value) % 2 )
 
 	def if_(self, value1, value2, functions):
