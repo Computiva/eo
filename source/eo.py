@@ -19,6 +19,10 @@ Functions:
 >>> eo.parse()
 '\\xc3\\x82ngelo Nuffer'
 
+>>> eo = EoParser(' @f1 { @f2 { "abc" } f2 } f1 ')
+>>> eo.parse()
+'abc'
+
 Arguments:
 >>> eo = EoParser(' @tac a b { b " " a } tac "abc" "def" ')
 >>> eo.parse()
@@ -182,7 +186,12 @@ class Function(object):
 				self.arguments.append(name)
 		char = infile.read(1)
 		self.source = str()
-		while char != "}":
+		inside = 0
+		while char != "}" or inside > 0:
+			if char == "{":
+				inside += 1
+			if char == "}":
+				inside -= 1
 			self.source += char
 			char = infile.read(1)
 
